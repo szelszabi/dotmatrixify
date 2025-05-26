@@ -1,5 +1,5 @@
 # dotmatrixify
-Transforms pixelart to dot matrix! The Nothing aesthetic is 
+Transforms pixelart to dot matrix! The Nothing aesthetic is in arms reach!
 
 From:
 <br>
