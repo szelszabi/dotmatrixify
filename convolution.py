@@ -1,47 +1,46 @@
-def convolution(
-    input_image_path,
-    output_image_path,
-    kernel_width,
-    kernel_height,
-):
-    from PIL import Image
-    import numpy as np
-
-    # Load the input image
-    img = Image.open(input_image_path).convert("RGBA")
-    img_data = np.array(img)
-
-    # Get the dimensions of the input image
-    height, width, channels = img_data.shape
-
-    # Calculate the dimensions of the output image
-    new_height = height // kernel_height
-    new_width = width // kernel_width
-
-    # Create an empty array for the compressed image
-    compressed_data = np.zeros((new_height, new_width, channels), dtype=np.uint8)
-
-    # Perform the averaging operation
-    for i in range(new_height):
-        for j in range(new_width):
-            # Extract the n x n block
-            block = img_data[
-                i * kernel_height : (i + 1) * kernel_height,
-                j * kernel_width : (j + 1) * kernel_width,
-                :,
-            ]
-            # Compute the average for each channel
-            compressed_data[i, j] = block.mean(axis=(0, 1))
-
-    # Save the output image
-    output_img = Image.fromarray(compressed_data)
-    output_img.save(output_image_path)
+from PIL import Image
+import numpy as np
 
 
-def main():
-    # Compress the image by averaging 3x3 blocks
-    convolution("hirez.png", "hirez_output.png", 10, 10)
+def color_distance(c1, c2):
+    return np.linalg.norm(np.array(c1[:3]) - np.array(c2[:3]))
+
+
+def edge_aware_downsample(img, window_size=4, color_threshold=30):
+    pixels = np.array(img)
+    h, w, _ = pixels.shape
+
+    new_h = h // window_size
+    new_w = w // window_size
+    output = np.zeros((new_h, new_w, 4), dtype=np.int8)
+
+    for y in range(new_h):
+        for x in range(new_w):
+            block = pixels[
+                y * window_size : (y + 1) * window_size,
+                x * window_size : (x + 1) * window_size,
+            ].reshape(-1, 4)
+
+            # Use the center pixel as reference for edge-aware filtering
+            center = block[len(block) // 2]
+            similar = np.array(
+                [px for px in block if color_distance(px, center) < color_threshold]
+            )
+
+            if len(similar) == 0:
+                avg_color = center  # fallback
+            else:
+                avg_color = similar.mean(axis=0)
+
+            avg_color = list(map(int, avg_color))
+            output[y, x] = avg_color
+
+    return output
 
 
 if __name__ == "__main__":
-    main()
+    # Example usage
+    output_img = edge_aware_downsample(
+        "input_image/hirez.png", window_size=4, color_threshold=40
+    )
+    output_img.save("output_image/downsampled_edge_aware.png")
